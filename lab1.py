@@ -31,6 +31,25 @@ class Window:
         magic_matrix = cv2.getPerspectiveTransform(np.float32(coordinates), np.float32([(width, 0), (0, 0), (0, height), (width, height)]))
         self.frame = cv2.warpPerspective(self.frame, magic_matrix, shape)
 
+    def blur(self):
+        self.frame = cv2.blur(self.frame, ksize=(5, 5))
+
+    def sobel(self):
+        sobel_vertical_kernel = np.float32([[-1, -2, -1],
+                                     [0, 0, 0],
+                                     [1, 2, 1]])
+        sobel_horizontal_kernel = np.transpose(sobel_vertical_kernel)
+
+        sobel_vertical_frame = cv2.filter2D(self.frame.astype(np.float32), -1, sobel_vertical_kernel)
+        sobel_horizontal_frame = cv2.filter2D(self.frame.astype(np.float32), -1, sobel_horizontal_kernel)
+
+        sobel_frame = np.sqrt((sobel_vertical_frame * sobel_vertical_frame) + (sobel_horizontal_frame * sobel_horizontal_frame))
+        self.frame = cv2.convertScaleAbs(sobel_frame)
+
+        return sobel_vertical_frame, sobel_horizontal_frame
+
+    def binarize(self, threshold=int(255/2)):
+        self.frame = cv2.threshold(self.frame, threshold, 255, cv2.THRESH_BINARY)[1]
 
 def generate_trapezoid(shape):
     trapezoid = np.zeros((shape[1], shape[0]), dtype=np.uint8)
@@ -54,14 +73,21 @@ if __name__ == "__main__":
         "resized",
         "gray_scale",
         "road",
-        "stretched_road"
+        "stretched_road",
+        "blurred",
+        "sobel",
+        "binarized",
     ]
     positions = [
         (0, 0),
         (480 + 1, 0),
-        (2 * 480 + 1, 0),
-        (3 * 480 + 1, 0),
-        (0, 360),
+        (2 * (480 + 1), 0),
+        (3 * (480 + 1), 0),
+        (0, 360 + 1),
+        (480 + 1, 360 + 1),
+        (2 * (480 + 1), 360 + 1),
+        (3 * (480 + 1), 360 + 1),
+        (0, 2 * (360 + 1))
     ]
     shape = (480, 360)
 
@@ -89,6 +115,22 @@ if __name__ == "__main__":
         window5 = Window(window_names[4], window4.frame, shape, positions[4])
         window5.stretch(coords)
         window5.show()
+
+        cv2.namedWindow("TEST")
+
+        cv2.imshow("TEST", window5.frame)
+
+        window6 = Window(window_names[5], window5.frame, shape, positions[5])
+        window6.blur()
+        window6.show()
+
+        window7 = Window(window_names[6], window6.frame, shape, positions[6])
+        window7.sobel()
+        window7.show()
+
+        window8 = Window(window_names[7], window7.frame, shape, positions[7])
+        window8.binarize()
+        window8.show()
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
